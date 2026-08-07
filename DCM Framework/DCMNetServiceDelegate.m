@@ -117,7 +117,9 @@ static BOOL DCMNetServiceContainsNumericAddress(NSNetService* service, NSString*
     if( wanted == nil)
         return NO;
 
-    for( NSData* data in service.addresses)
+    // Snapshot: the resolver mutates the service's address list on the main run
+    // loop while this runs on the SCP, web portal and XML-RPC threads
+    for( NSData* data in [[service.addresses copy] autorelease])
     {
         if( data.length < sizeof(struct sockaddr))
             continue;

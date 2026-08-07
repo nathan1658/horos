@@ -2796,12 +2796,35 @@ static BOOL firstCall = YES;
 
 // Starting with the macOS 26 SDK, NSToolbarItem no longer scales down oversized
 // images: image-based items are laid out at the image's intrinsic size, so a
-// 530-pt Import.pdf fills the whole toolbar. Observed app-wide (object: nil) so
-// toolbar items provided by plugins are normalized too. Items whose image is
-// replaced after insertion keep that new image untouched.
+// 530-pt Import.pdf fills the whole toolbar.
 static const CGFloat toolbarImageSide = 32;
 static const CGFloat toolbarImageSideTolerance = 36; // leaves the slightly-over-sized icons alone
 
+// Returns an image that fits a toolbar item. Code replacing the image of an
+// item that is already in a toolbar has to call this itself: the notification
+// below only fires when the item is inserted.
++ (NSImage*) toolbarSizedImage: (NSImage*) image
+{
+    NSSize size = image.size;
+    CGFloat largestSide = MAX( size.width, size.height);
+
+    // Rejects nil images, zero sizes and non-finite sizes as well as small icons
+    if( isfinite( largestSide) == NO || largestSide <= toolbarImageSideTolerance)
+        return image;
+
+    // Keep the aspect ratio, but never let a very wide or very tall image round
+    // its minor side down to zero
+    NSSize scaled = NSMakeSize( round( toolbarImageSide * size.width / largestSide), round( toolbarImageSide * size.height / largestSide));
+
+    // Copy before resizing: -imageNamed: returns a shared cached instance
+    NSImage *resized = [image copy];
+    [resized setSize: NSMakeSize( MAX( scaled.width, 1), MAX( scaled.height, 1))];
+
+    return resized;
+}
+
+// Observed app-wide (object: nil) so toolbar items provided by plugins are
+// normalized too.
 - (void) normalizeToolbarItemImage: (NSNotification*) notification
 {
     NSToolbarItem *item = [[notification userInfo] objectForKey: @"item"];
@@ -2812,22 +2835,7 @@ static const CGFloat toolbarImageSideTolerance = 36; // leaves the slightly-over
     if( item.view != nil) // custom-view items are sized by their view, not their image
         return;
 
-    NSImage *image = item.image;
-    NSSize size = image.size;
-    CGFloat largestSide = MAX( size.width, size.height);
-
-    // Rejects nil images, zero sizes and non-finite sizes as well as small icons
-    if( isfinite( largestSide) == NO || largestSide <= toolbarImageSideTolerance)
-        return;
-
-    // Keep the aspect ratio, but never let a very wide or very tall image round
-    // its minor side down to zero
-    NSSize scaled = NSMakeSize( round( toolbarImageSide * size.width / largestSide), round( toolbarImageSide * size.height / largestSide));
-
-    // Copy before resizing: -imageNamed: returns a shared cached instance
-    NSImage *resized = [image copy];
-    [resized setSize: NSMakeSize( MAX( scaled.width, 1), MAX( scaled.height, 1))];
-    item.image = resized;
+    item.image = [AppController toolbarSizedImage: item.image];
 }
 
 static BOOL initialized = NO;

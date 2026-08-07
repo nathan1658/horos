@@ -7691,7 +7691,7 @@ static ViewerController *draggedController = nil;
             }
         if (samestudyviewer) {
             [imageView setSyncRelativeDiff:[[samestudyviewer imageView] syncRelativeDiff]];
-            [[self findSyncSeriesButton] setImage: [NSImage imageNamed: @"SyncLock.pdf"]];
+            [[self findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: @"SyncLock.pdf"]]];
             [imageView setSyncSeriesIndex: 0];
             wedidsomethingsmart = YES;
         }
@@ -16492,13 +16492,13 @@ static float oldsetww, oldsetwl;
             float offset = [(DCMPix*)[[imageView dcmPixList] objectAtIndex:[imageView  curImage]] sliceLocation] - [sliceLocation floatValue];
             
             [imageView setSyncRelativeDiff:offset];
-            [[self findSyncSeriesButton] setImage: [NSImage imageNamed: @"SyncLock.pdf"]];
+            [[self findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: @"SyncLock.pdf"]]];
             
             [imageView setSyncSeriesIndex: 0];
         }
         else
         {
-            [[self findSyncSeriesButton] setImage: [NSImage imageNamed: SyncSeriesToolbarItemIdentifier]];
+            [[self findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: SyncSeriesToolbarItemIdentifier]]];
             [imageView setSyncSeriesIndex: -1];
         }
     }
@@ -16506,11 +16506,11 @@ static float oldsetww, oldsetwl;
     {
         if( [imageView syncro] != syncroOFF)
         {
-            [[self findSyncSeriesButton] setImage: [NSImage imageNamed: @"SyncLock.pdf"]];
+            [[self findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: @"SyncLock.pdf"]]];
         }
         else
         {
-            [[self findSyncSeriesButton] setImage: [NSImage imageNamed: SyncSeriesToolbarItemIdentifier]];
+            [[self findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: SyncSeriesToolbarItemIdentifier]]];
         }
     }
 }
@@ -16534,7 +16534,7 @@ static float oldsetww, oldsetwl;
         
         for( ViewerController *v in [ViewerController getDisplayed2DViewers])
         {
-            [[v findSyncSeriesButton] setImage: [NSImage imageNamed: @"SyncLock.pdf"]];
+            [[v findSyncSeriesButton] setImage: [AppController toolbarSizedImage: [NSImage imageNamed: @"SyncLock.pdf"]]];
             [v.imageView setSyncSeriesIndex: 0];
         }
     }
