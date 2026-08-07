@@ -2776,7 +2776,9 @@ static BOOL firstCall = YES;
         STORESCPTLS = [[NSRecursiveLock alloc] init];
         
         [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(getUrl:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
-        
+
+        [[NSNotificationCenter defaultCenter] addObserver: self selector: @selector(normalizeToolbarItemImage:) name: NSToolbarWillAddItemNotification object: nil];
+
         #ifndef OSIRIX_LIGHT
         [VRView testGraphicBoard];
         #endif
@@ -2791,6 +2793,42 @@ static BOOL firstCall = YES;
 	return self;
 }
 
+
+// Starting with the macOS 26 SDK, NSToolbarItem no longer scales down oversized
+// images: image-based items are laid out at the image's intrinsic size, so a
+// 530-pt Import.pdf fills the whole toolbar. Observed app-wide (object: nil) so
+// toolbar items provided by plugins are normalized too. Items whose image is
+// replaced after insertion keep that new image untouched.
+static const CGFloat toolbarImageSide = 32;
+static const CGFloat toolbarImageSideTolerance = 36; // leaves the slightly-over-sized icons alone
+
+- (void) normalizeToolbarItemImage: (NSNotification*) notification
+{
+    NSToolbarItem *item = [[notification userInfo] objectForKey: @"item"];
+
+    if( [item isKindOfClass: [NSToolbarItem class]] == NO)
+        return;
+
+    if( item.view != nil) // custom-view items are sized by their view, not their image
+        return;
+
+    NSImage *image = item.image;
+    NSSize size = image.size;
+    CGFloat largestSide = MAX( size.width, size.height);
+
+    // Rejects nil images, zero sizes and non-finite sizes as well as small icons
+    if( isfinite( largestSide) == NO || largestSide <= toolbarImageSideTolerance)
+        return;
+
+    // Keep the aspect ratio, but never let a very wide or very tall image round
+    // its minor side down to zero
+    NSSize scaled = NSMakeSize( round( toolbarImageSide * size.width / largestSide), round( toolbarImageSide * size.height / largestSide));
+
+    // Copy before resizing: -imageNamed: returns a shared cached instance
+    NSImage *resized = [image copy];
+    [resized setSize: NSMakeSize( MAX( scaled.width, 1), MAX( scaled.height, 1))];
+    item.image = resized;
+}
 
 static BOOL initialized = NO;
 + (void) initialize

@@ -12,11 +12,14 @@ download_fixture() {
     local base_url="$1"
     local filename="$2"
 
-    if [[ -f "$filename" ]]; then
+    # Only keep an existing file when it already matches the pinned checksum, so
+    # an interrupted download repairs itself instead of failing every later run.
+    if [[ -f "$filename" ]] && grep -- " $filename\$" SHA256SUMS | shasum -a 256 -c --status -; then
         return
     fi
 
-    curl --fail --location --retry 3 --output "$filename" "$base_url/$filename"
+    curl --fail --location --retry 3 --output "$filename.part" "$base_url/$filename"
+    mv "$filename.part" "$filename"
 }
 
 for filename in \

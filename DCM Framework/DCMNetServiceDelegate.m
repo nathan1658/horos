@@ -43,13 +43,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <unistd.h>
 
 static DCMNetServiceDelegate *_netServiceDelegate = nil;
 
-static NSString* DCMCanonicalNumericAddress(NSString* address)
+static NSString* DCMCanonicalNumericAddress(NSString* address, uint32_t* zoneIndex)
 {
+    if( zoneIndex)
+        *zoneIndex = 0;
+
     if( [address isKindOfClass: [NSString class]] == NO)
         return nil;
 
@@ -58,12 +62,24 @@ static NSString* DCMCanonicalNumericAddress(NSString* address)
         candidate = [candidate substringWithRange: NSMakeRange(1, candidate.length-2)];
 
     // inet_pton does not accept IPv6 zone identifiers. Horos omits the scope
-    // identifier when it creates a displayed DICOM destination address.
+    // identifier when it creates a displayed DICOM destination address, but a
+    // manually saved link-local address may carry one: keep it, two interfaces
+    // can host the same link-local address without being the same node.
     if( [candidate rangeOfString: @":"].location != NSNotFound)
     {
         NSRange scope = [candidate rangeOfString: @"%" options: NSBackwardsSearch];
         if( scope.location != NSNotFound)
+        {
+            if( zoneIndex)
+            {
+                NSString* zone = [candidate substringFromIndex: NSMaxRange( scope)];
+                *zoneIndex = if_nametoindex( zone.UTF8String);
+                if( *zoneIndex == 0)
+                    *zoneIndex = (uint32_t) zone.intValue;
+            }
+
             candidate = [candidate substringToIndex: scope.location];
+        }
     }
 
     const char* utf8 = candidate.UTF8String;
@@ -96,7 +112,8 @@ static NSString* DCMNormalizedHostName(NSString* hostName)
 
 static BOOL DCMNetServiceContainsNumericAddress(NSNetService* service, NSString* address)
 {
-    NSString* wanted = DCMCanonicalNumericAddress(address);
+    uint32_t wantedZone = 0;
+    NSString* wanted = DCMCanonicalNumericAddress(address, &wantedZone);
     if( wanted == nil)
         return NO;
 
@@ -112,7 +129,16 @@ static BOOL DCMNetServiceContainsNumericAddress(NSNetService* service, NSString*
         if( family == AF_INET && data.length >= sizeof(struct sockaddr_in))
             source = &((const struct sockaddr_in*) socketAddress)->sin_addr;
         else if( family == AF_INET6 && data.length >= sizeof(struct sockaddr_in6))
-            source = &((const struct sockaddr_in6*) socketAddress)->sin6_addr;
+        {
+            const struct sockaddr_in6* ipv6Address = (const struct sockaddr_in6*) socketAddress;
+
+            // A saved address that names an interface only matches the service
+            // reached through that same interface
+            if( wantedZone && ipv6Address->sin6_scope_id && wantedZone != ipv6Address->sin6_scope_id)
+                continue;
+
+            source = &ipv6Address->sin6_addr;
+        }
         else
             continue;
 
@@ -499,6 +525,9 @@ static BOOL DCMNetServiceContainsNumericAddress(NSNetService* service, NSString*
                                 if( sameAddress)
                                 {
                                     // Explicit saved configuration wins over the transient Bonjour copy.
+                                    // The previous rule (prefer the Bonjour DNS name over a numeric
+                                    // saved address) is intentionally gone: it never removed the entry
+                                    // it meant to and looped forever instead.
                                     alreadyHere = YES;
                                     break;
                                 }
