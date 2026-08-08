@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+
+window_xibs=(
+    Horos/Resources/en.lproj/MPR.xib
+    Horos/Resources/ja-JP.lproj/MPR.xib
+    Horos/Resources/en.lproj/OrthogonalMPR.xib
+    Horos/Resources/ja-JP.lproj/OrthogonalMPR.xib
+    Horos/Resources/en.lproj/VR.xib
+    Horos/Resources/ja-JP.lproj/VR.xib
+    Horos/Resources/en.lproj/PETCT.xib
+    Horos/Resources/ja-JP.lproj/PETCT.xib
+)
+
+for relative_path in "${window_xibs[@]}"; do
+    xib="$repo_root/$relative_path"
+    xmllint --noout "$xib"
+
+    if grep -q 'texturedBackground="YES"' "$xib"; then
+        echo "error: textured window style is forbidden in $relative_path" >&2
+        exit 1
+    fi
+done
+
+viewer_controller="$repo_root/Horos/Sources/ViewerController.m"
+if grep -E -q 'setImage: *\[NSImage imageNamed: *(Play|Pause)ToolbarItemIdentifier\]' "$viewer_controller"; then
+    echo "error: cine Play/Pause images must pass through toolbarSizedImage:" >&2
+    exit 1
+fi
+
+mpr_view="$repo_root/Horos/Sources/MPRDCMView.m"
+if [[ "$(grep -c '\[vrView initializeVTKRenderWindowIfNeeded\];' "$mpr_view")" -lt 2 ]]; then
+    echo "error: direct MPR volume renders must initialize the VTK render window" >&2
+    exit 1
+fi
+
+app_controller="$repo_root/Horos/Sources/AppController.m"
+if grep -q 'Error = GetAllPIDsForProcessName(' "$app_controller"; then
+    echo "error: startup cleanup must not use the blocking KERN_PROC_ALL process scan" >&2
+    exit 1
+fi
+
+echo "macOS 27 compatibility checks passed"

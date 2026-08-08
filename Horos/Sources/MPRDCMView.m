@@ -424,7 +424,10 @@ unsigned int minimumStep;
             else lastRenderingWasMoveCenter = NO;
             
             if (isLoading == NO)
+            {
+                [vrView initializeVTKRenderWindowIfNeeded];
                 [vrView render];
+            }
         }
         
         float *imagePtr = nil;
@@ -563,7 +566,8 @@ unsigned int minimumStep;
         if( blendingView)
         {
             [blendingView getWLWW: &previousWL :&previousWW];
-            
+
+            [vrView initializeVTKRenderWindowIfNeeded];
             [vrView renderBlendedVolume];
             
             float *blendedImagePtr = nil;

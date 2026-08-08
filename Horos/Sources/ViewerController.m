@@ -6189,7 +6189,7 @@ static ViewerController *draggedController = nil;
         [toolbarItem setLabel: NSLocalizedString(@"Browse", nil)];
         [toolbarItem setPaletteLabel: NSLocalizedString(@"Browse", nil)];
         [toolbarItem setToolTip: NSLocalizedString(@"Browse this series", nil)];
-        [toolbarItem setImage: [NSImage imageNamed: PlayToolbarItemIdentifier]];
+        [toolbarItem setImage: [AppController toolbarSizedImage: [NSImage imageNamed: PlayToolbarItemIdentifier]]];
         [toolbarItem setTarget: self];
         [toolbarItem setAction: @selector(PlayStop:)];
     }
@@ -17771,7 +17771,7 @@ static float oldsetww, oldsetwl;
         [timer release];
         timer = nil;
         
-        [sender setImage: [NSImage imageNamed: PlayToolbarItemIdentifier]];
+        [sender setImage: [AppController toolbarSizedImage: [NSImage imageNamed: PlayToolbarItemIdentifier]]];
         [sender setLabel: NSLocalizedString(@"Browse", nil)];
         [sender setPaletteLabel: NSLocalizedString(@"Browse", nil)];
         [sender setToolTip: NSLocalizedString(@"Browse this series", nil)];
@@ -17789,7 +17789,7 @@ static float oldsetww, oldsetwl;
         lastTime = [NSDate timeIntervalSinceReferenceDate];
         lastTimeFrame = [NSDate timeIntervalSinceReferenceDate];
         
-        [sender setImage: [NSImage imageNamed: PauseToolbarItemIdentifier]];
+        [sender setImage: [AppController toolbarSizedImage: [NSImage imageNamed: PauseToolbarItemIdentifier]]];
         [sender setLabel: NSLocalizedString(@"Stop", nil)];
         [sender setPaletteLabel: NSLocalizedString(@"Stop", nil)];
     }
@@ -22869,4 +22869,3 @@ static float oldsetww, oldsetwl;
 
 
 @end
-
