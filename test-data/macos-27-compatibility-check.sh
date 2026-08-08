@@ -44,4 +44,11 @@ if grep -q 'Error = GetAllPIDsForProcessName(' "$app_controller"; then
     exit 1
 fi
 
+browser_controller="$repo_root/Horos/Sources/BrowserController.m"
+browser_toolbar_delegate="$(LC_ALL=C sed -n '/^- (NSToolbarItem \*) toolbar:/,/^}$/p' "$browser_controller")"
+if ! grep -q 'toolbarItem = nil;' <<< "$browser_toolbar_delegate"; then
+    echo "error: unavailable saved plugin toolbar items must be discarded" >&2
+    exit 1
+fi
+
 echo "macOS 27 compatibility checks passed"
