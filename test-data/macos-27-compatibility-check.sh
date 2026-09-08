@@ -6,6 +6,14 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
 window_xibs=(
+    Horos/Resources/en.lproj/Viewer.xib
+    Horos/Resources/ja-JP.lproj/Viewer.xib
+    Horos/Resources/en.lproj/SR.xib
+    Horos/Resources/ja-JP.lproj/SR.xib
+    Horos/Resources/en.lproj/Endoscopy.xib
+    Horos/Resources/ja-JP.lproj/Endoscopy.xib
+    Horos/Resources/en.lproj/CPR.xib
+    Horos/Resources/ja-JP.lproj/CPR.xib
     Horos/Resources/en.lproj/MPR.xib
     Horos/Resources/ja-JP.lproj/MPR.xib
     Horos/Resources/en.lproj/OrthogonalMPR.xib
@@ -32,11 +40,18 @@ if grep -E -q 'setImage: *\[NSImage imageNamed: *(Play|Pause)ToolbarItemIdentifi
     exit 1
 fi
 
-mpr_view="$repo_root/Horos/Sources/MPRDCMView.m"
-if [[ "$(grep -c '\[vrView initializeVTKRenderWindowIfNeeded\];' "$mpr_view")" -lt 2 ]]; then
-    echo "error: direct MPR volume renders must initialize the VTK render window" >&2
-    exit 1
-fi
+# Initialization belongs at the shared rendering boundary, so every caller is safe.
+for method in render renderBlendedVolume; do
+    body="$(LC_ALL=C sed -n "/^- (void) $method\$/,/^}/p" "$repo_root/Horos/Sources/VRView.mm")"
+    if ! awk '
+        /\[self initializeVTKRenderWindowIfNeeded\];/ { initialized = 1 }
+        /->Render\(/ { renders++; if (!initialized) failed = 1 }
+        END { exit (failed || renders != 1) }
+    ' <<< "$body"; then
+        echo "error: VRView $method must initialize VTK before the mapper renders" >&2
+        exit 1
+    fi
+done
 
 app_controller="$repo_root/Horos/Sources/AppController.m"
 if grep -q 'Error = GetAllPIDsForProcessName(' "$app_controller"; then
